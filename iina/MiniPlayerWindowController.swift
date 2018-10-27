@@ -106,6 +106,7 @@ class MiniPlayerWindowController: NSWindowController, NSWindowDelegate, NSPopove
   var isOntop = false
   var isPlaylistVisible = false
   var isVideoVisible = true
+  var closedManually = false
 
   var videoViewAspectConstraint: NSLayoutConstraint?
 
@@ -170,8 +171,6 @@ class MiniPlayerWindowController: NSWindowController, NSWindowDelegate, NSPopove
     defaultAlbumArt.layer?.contents = #imageLiteral(resourceName: "default-album-art")
 
     // close button
-    closeButtonVE.action = #selector(self.close)
-    closeButtonBox.action = #selector(self.close)
     closeButtonView.alphaValue = 0
     closeButtonBackgroundViewVE.layer?.cornerRadius = 8
     closeButtonBackgroundViewBox.isHidden = true
@@ -207,13 +206,14 @@ class MiniPlayerWindowController: NSWindowController, NSWindowDelegate, NSPopove
   }
 
   func windowWillClose(_ notification: Notification) {
-    if player.isInMiniPlayer {
+    if closedManually {
       player.switchedToMiniPlayerManually = false
       player.switchedBackFromMiniPlayerManually = false
-      player.switchBackFromMiniPlayer(automatically: true, showMainWindow: false)
-      player.mainWindow.close()
-    } else {
-      // closed window while in PIP, trigger close action in main window explicitly
+      if #available(OSX 10.12, *), player.switchedToMiniPlayerByPIP {
+        player.switchBackFromMiniPlayer(automatically: true, showMainWindow: false, triggeredByPIP: true)
+      } else {
+        player.switchBackFromMiniPlayer(automatically: true, showMainWindow: false)
+      }
       player.mainWindow.close()
     }
   }
@@ -427,6 +427,11 @@ class MiniPlayerWindowController: NSWindowController, NSWindowDelegate, NSPopove
   }
 
   // MARK: - IBAction
+
+  @IBAction func closeBtnAction(_ sender: Any) {
+    closedManually = true
+    close()
+  }
 
   @IBAction func togglePlaylist(_ sender: Any) {
     guard let window = window else { return }

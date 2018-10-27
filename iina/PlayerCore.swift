@@ -344,11 +344,8 @@ class PlayerCore: NSObject {
     switchedBackFromMiniPlayerManually = false
 
     let needRestoreLayout = !miniPlayer.isWindowLoaded
+    miniPlayer.closedManually = false
     miniPlayer.showWindow(self)
-
-    if triggeredByPIP, let w = mainWindow.window, let wm = miniPlayer.window {
-      wm.setFrameOrigin(w.frame.centeredResize(to: wm.frame.size).origin)
-    }
 
     switchedToMiniPlayerByPIP = triggeredByPIP
     miniPlayer.albumArtButton.isHidden = triggeredByPIP
@@ -409,6 +406,10 @@ class PlayerCore: NSObject {
       if Preference.bool(for: .musicModeShowPlaylist) {
         miniPlayer.togglePlaylist(self)
       }
+    }
+
+    if triggeredByPIP, let w = mainWindow.window, let wm = miniPlayer.window {
+      wm.setFrameOrigin(w.frame.centeredResize(to: wm.frame.size).origin)
     }
   }
 

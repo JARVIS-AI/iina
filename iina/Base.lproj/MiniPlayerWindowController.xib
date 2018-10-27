@@ -293,6 +293,9 @@
                                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                             <font key="font" metaFont="system"/>
                                         </buttonCell>
+                                        <connections>
+                                            <action selector="closeBtnAction:" target="-2" id="Iuo-tj-ZUu"/>
+                                        </connections>
                                     </button>
                                     <button toolTip="Back to video mode" translatesAutoresizingMaskIntoConstraints="NO" id="WS6-ix-uBJ">
                                         <rect key="frame" x="4" y="4" width="11" height="11"/>
@@ -335,6 +338,9 @@
                                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                                 <font key="font" metaFont="system"/>
                                             </buttonCell>
+                                            <connections>
+                                                <action selector="closeBtnAction:" target="-2" id="6Gi-DP-gNI"/>
+                                            </connections>
                                         </button>
                                         <button toolTip="Back to video mode" translatesAutoresizingMaskIntoConstraints="NO" id="K7j-vB-FlK">
                                             <rect key="frame" x="2" y="2" width="11" height="11"/>
