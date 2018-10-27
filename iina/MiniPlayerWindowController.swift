@@ -76,6 +76,8 @@ class MiniPlayerWindowController: NSWindowController, NSWindowDelegate, NSPopove
   @IBOutlet weak var muteButton: NSButton!
   @IBOutlet weak var volumeButton: NSButton!
   @IBOutlet var volumePopover: NSPopover!
+  @IBOutlet weak var albumArtButton: NSButton!
+  
   @IBOutlet weak var backgroundView: NSVisualEffectView!
   @IBOutlet weak var closeButtonView: NSView!
   @IBOutlet weak var closeButtonBackgroundViewVE: NSVisualEffectView!
@@ -205,10 +207,15 @@ class MiniPlayerWindowController: NSWindowController, NSWindowDelegate, NSPopove
   }
 
   func windowWillClose(_ notification: Notification) {
-    player.switchedToMiniPlayerManually = false
-    player.switchedBackFromMiniPlayerManually = false
-    player.switchBackFromMiniPlayer(automatically: true, showMainWindow: false)
-    player.mainWindow.close()
+    if player.isInMiniPlayer {
+      player.switchedToMiniPlayerManually = false
+      player.switchedBackFromMiniPlayerManually = false
+      player.switchBackFromMiniPlayer(automatically: true, showMainWindow: false)
+      player.mainWindow.close()
+    } else {
+      // closed window while in PIP, trigger close action in main window explicitly
+      player.mainWindow.close()
+    }
   }
 
   func windowWillStartLiveResize(_ notification: Notification) {
@@ -465,8 +472,14 @@ class MiniPlayerWindowController: NSWindowController, NSWindowDelegate, NSPopove
   }
 
   @IBAction func backBtnAction(_ sender: NSButton) {
-    window?.orderOut(self)
-    player.switchBackFromMiniPlayer(automatically: false)
+    if player.switchedToMiniPlayerByPIP {
+      if #available(OSX 10.12, *) {
+        player.mainWindow.exitPIP()
+      }
+    } else {
+      window?.orderOut(self)
+      player.switchBackFromMiniPlayer(automatically: false)
+    }
   }
 
   @IBAction func playBtnAction(_ sender: NSButton) {

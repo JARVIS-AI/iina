@@ -2811,6 +2811,8 @@ extension MainWindowController: PIPViewControllerDelegate {
 
     pip.presentAsPicture(inPicture: pipVideo)
     pipOverlayView.isHidden = false
+
+    player.switchToMiniPlayer(automatically: true, triggeredByPIP: true)
   }
 
   func exitPIP() {
@@ -2848,6 +2850,8 @@ extension MainWindowController: PIPViewControllerDelegate {
 
   func pipDidClose(_ pip: PIPViewController) {
     doneExitingPIP()
+    player.switchBackFromMiniPlayer(automatically: true, triggeredByPIP: true)
+    player.miniPlayer.close()
   }
 
   func pipActionPlay(_ pip: PIPViewController) {

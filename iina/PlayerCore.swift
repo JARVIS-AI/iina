@@ -126,6 +126,7 @@ class PlayerCore: NSObject {
   var isMpvTerminated: Bool = false
 
   var isInMiniPlayer = false
+  var switchedToMiniPlayerByPIP = false
   var switchedToMiniPlayerManually = false
   var switchedBackFromMiniPlayerManually = false
 
@@ -334,8 +335,9 @@ class PlayerCore: NSObject {
     self.syncPlayTimeTimer?.invalidate()
   }
 
-  func switchToMiniPlayer(automatically: Bool = false) {
-    Logger.log("Switch to mini player, automatically=\(automatically)", subsystem: subsystem)
+  func switchToMiniPlayer(automatically: Bool = false, triggeredByPIP: Bool = false) {
+    Logger.log("Switch to mini player, automatically=\(automatically), pip=\(triggeredByPIP)", subsystem: subsystem)
+    guard !isInMiniPlayer else { return }
     if !automatically {
       switchedToMiniPlayerManually = true
     }
@@ -343,6 +345,13 @@ class PlayerCore: NSObject {
 
     let needRestoreLayout = !miniPlayer.isWindowLoaded
     miniPlayer.showWindow(self)
+
+    if triggeredByPIP, let w = mainWindow.window, let wm = miniPlayer.window {
+      wm.setFrameOrigin(w.frame.centeredResize(to: wm.frame.size).origin)
+    }
+
+    switchedToMiniPlayerByPIP = triggeredByPIP
+    miniPlayer.albumArtButton.isHidden = triggeredByPIP
 
     miniPlayer.updateTrack()
     let playlistView = mainWindow.playlistView.view
@@ -359,35 +368,41 @@ class PlayerCore: NSObject {
     mainWindow.playlistView.useCompactTabHeight = true
     miniPlayer.playlistWrapperView.addSubview(playlistView)
     Utility.quickConstraints(["H:|[v]|", "V:|[v]|"], ["v": playlistView])
-    // move video view
-    videoView.removeFromSuperview()
-    miniPlayer.videoWrapperView.addSubview(videoView, positioned: .below, relativeTo: nil)
-    Utility.quickConstraints(["H:|[v]|", "V:|[v]|"], ["v": videoView])
-    let (dw, dh) = videoSizeForDisplay
-    miniPlayer.updateVideoViewAspectConstraint(withAspect: CGFloat(dw) / CGFloat(dh))
 
-    // if no video track (or video info is still not available now), set aspect ratio for main window
-    if let mw = mainWindow.window, mw.aspectRatio == .zero {
-      let size = NSSize(width: dw, height: dh)
-      mw.setFrame(NSRect(origin: mw.frame.origin, size: size), display: false)
-      mw.aspectRatio = size
+    if (!triggeredByPIP) {
+      // move video view
+      videoView.removeFromSuperview()
+      miniPlayer.videoWrapperView.addSubview(videoView, positioned: .below, relativeTo: nil)
+      Utility.quickConstraints(["H:|[v]|", "V:|[v]|"], ["v": videoView])
+      let (dw, dh) = videoSizeForDisplay
+      miniPlayer.updateVideoViewAspectConstraint(withAspect: CGFloat(dw) / CGFloat(dh))
+
+      // if no video track (or video info is still not available now), set aspect ratio for main window
+      if let mw = mainWindow.window, mw.aspectRatio == .zero {
+        let size = NSSize(width: dw, height: dh)
+        mw.setFrame(NSRect(origin: mw.frame.origin, size: size), display: false)
+        mw.aspectRatio = size
+      }
+      // if received video size before switching to music mode, hide default album art
+      if !info.videoTracks.isEmpty {
+        miniPlayer.defaultAlbumArt.isHidden = true
+      }
+      // in case of video size changed, reset mini player window size if playlist is folded
+      if !miniPlayer.isPlaylistVisible {
+        miniPlayer.setToInitialWindowSize(display: true, animate: false)
+      }
+      videoView.videoLayer.draw()
     }
-    // if received video size before switching to music mode, hide default album art
-    if !info.videoTracks.isEmpty {
-      miniPlayer.defaultAlbumArt.isHidden = true
-    }
-    // in case of video size changed, reset mini player window size if playlist is folded
-    if !miniPlayer.isPlaylistVisible {
-      miniPlayer.setToInitialWindowSize(display: true, animate: false)
-    }
-    videoView.videoLayer.draw()
 
     // hide main window
     mainWindow.window?.orderOut(self)
     isInMiniPlayer = true
 
-    // restore layout
-    if needRestoreLayout {
+    if triggeredByPIP {
+      if miniPlayer.isVideoVisible {
+        miniPlayer.toggleVideoView(self)
+      }
+    } else if needRestoreLayout {
       if !Preference.bool(for: .musicModeShowAlbumArt) {
         miniPlayer.toggleVideoView(self)
       }
@@ -397,24 +412,33 @@ class PlayerCore: NSObject {
     }
   }
 
-  func switchBackFromMiniPlayer(automatically: Bool, showMainWindow: Bool = true) {
+  /// Switch back to normal video window.
+  /// This method doesn't close the mini player. It must be closed manually if needed.
+  /// When supplying `triggeredByPIP`, `automatically` should also be `true`.
+  func switchBackFromMiniPlayer(automatically: Bool, showMainWindow: Bool = true, triggeredByPIP: Bool = false) {
     Logger.log("Switch to normal window from mini player, automatically=\(automatically)", subsystem: subsystem)
+    guard isInMiniPlayer else { return }
+    if (switchedToMiniPlayerByPIP && !triggeredByPIP) {
+      return
+    }
     if !automatically {
       switchedBackFromMiniPlayerManually = true
     }
     switchedToMiniPlayerManually = true
     mainWindow.playlistView.view.removeFromSuperview()
     mainWindow.playlistView.useCompactTabHeight = false
-    // add back video view
-    let mainWindowContentView = mainWindow.window!.contentView
-    miniPlayer.videoViewAspectConstraint?.isActive = false
-    miniPlayer.videoViewAspectConstraint = nil
-    mainWindow.videoView.removeFromSuperview()
-    mainWindowContentView?.addSubview(mainWindow.videoView, positioned: .below, relativeTo: nil)
-    ([.top, .bottom, .left, .right] as [NSLayoutConstraint.Attribute]).forEach { attr in
-      mainWindow.videoViewConstraints[attr] = NSLayoutConstraint(item: mainWindow.videoView, attribute: attr, relatedBy: .equal,
-                                                                 toItem: mainWindowContentView, attribute: attr, multiplier: 1, constant: 0)
-      mainWindow.videoViewConstraints[attr]!.isActive = true
+    if (!triggeredByPIP) {
+      // add back video view
+      let mainWindowContentView = mainWindow.window!.contentView
+      miniPlayer.videoViewAspectConstraint?.isActive = false
+      miniPlayer.videoViewAspectConstraint = nil
+      mainWindow.videoView.removeFromSuperview()
+      mainWindowContentView?.addSubview(mainWindow.videoView, positioned: .below, relativeTo: nil)
+      ([.top, .bottom, .left, .right] as [NSLayoutConstraint.Attribute]).forEach { attr in
+        mainWindow.videoViewConstraints[attr] = NSLayoutConstraint(item: mainWindow.videoView, attribute: attr, relatedBy: .equal,
+                                                                   toItem: mainWindowContentView, attribute: attr, multiplier: 1, constant: 0)
+        mainWindow.videoViewConstraints[attr]!.isActive = true
+      }
     }
     // show main window
     if showMainWindow {
