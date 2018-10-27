@@ -1081,7 +1081,7 @@ class PlayerCore: NSObject {
         mainWindow.volumeSlider.isEnabled = false
       }
 
-      if self.isInMiniPlayer {
+      if self.isInMiniPlayer && !self.switchedToMiniPlayerByPIP {
         miniPlayer.defaultAlbumArt.isHidden = !self.info.videoTracks.isEmpty
       }
     }
@@ -1128,7 +1128,7 @@ class PlayerCore: NSObject {
           }
         }
       } else {
-        if isInMiniPlayer && !switchedToMiniPlayerManually {
+        if isInMiniPlayer && !switchedToMiniPlayerManually && !switchedToMiniPlayerByPIP {
           Logger.log("Current media is not audio, switch to normal window", subsystem: subsystem)
           DispatchQueue.main.sync {
             miniPlayer.close()
@@ -1200,7 +1200,7 @@ class PlayerCore: NSObject {
   func notifyMainWindowVideoSizeChanged() {
     DispatchQueue.main.sync {
       self.mainWindow.adjustFrameByVideoSize()
-      if self.isInMiniPlayer {
+      if self.isInMiniPlayer && !self.switchedToMiniPlayerByPIP {
         self.miniPlayer.updateVideoSize()
       }
     }
