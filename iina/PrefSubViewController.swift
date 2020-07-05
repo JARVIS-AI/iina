@@ -20,6 +20,10 @@ class PrefSubViewController: PreferenceViewController, PreferenceWindowEmbeddabl
     return NSLocalizedString("preference.subtitle", comment: "Subtitles")
   }
 
+  var preferenceTabImage: NSImage {
+    return NSImage(named: NSImage.Name("pref_sub"))!
+  }
+
   override var sectionViews: [NSView] {
     return [sectionAutoLoadView, sectionASSView, sectionTextSubView, sectionPositionView, sectionOnlineSubView, sectionOtherView]
   }
@@ -34,11 +38,9 @@ class PrefSubViewController: PreferenceViewController, PreferenceWindowEmbeddabl
   @IBOutlet weak var subSourceStackView: NSStackView!
   @IBOutlet weak var subSourcePopUpButton: NSPopUpButton!
 
-  @IBOutlet weak var subLangTokenView: NSTokenField!
+  @IBOutlet weak var subLangTokenView: LanguageTokenField!
   @IBOutlet weak var loginIndicator: NSProgressIndicator!
   @IBOutlet weak var defaultEncodingList: NSPopUpButton!
-
-  private let tokenFieldDelegate = ISO639TokenFieldDelegate()
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -54,9 +56,9 @@ class PrefSubViewController: PreferenceViewController, PreferenceWindowEmbeddabl
     }
 
     defaultEncodingList.menu?.insertItem(NSMenuItem.separator(), at: 1)
-
-    subLangTokenView.delegate = tokenFieldDelegate
     loginIndicator.isHidden = true
+
+    subLangTokenView.stringValue = Preference.string(for: .subLang) ?? ""
 
     refreshOnlineSubSource()
   }
@@ -126,6 +128,10 @@ class PrefSubViewController: PreferenceViewController, PreferenceWindowEmbeddabl
 
   @IBAction func onlineSubSourceAction(_ sender: NSPopUpButton) {
     refreshOnlineSubSource()
+  }
+
+  @IBAction func preferredLanguageAction(_ sender: LanguageTokenField) {
+    Preference.set(sender.stringValue, for: .subLang)
   }
 
   private func refreshOnlineSubSource() {
